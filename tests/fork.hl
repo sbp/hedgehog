@@ -1,0 +1,5 @@
+(if (= (unix-fork) 0)
+    (do (print "Child here!\n")
+	(unix-exec "/bin/touch" '("touch" "foo" "bar") nil)
+	(print "Oh shit!\n")))
+(print "DONE\n")
