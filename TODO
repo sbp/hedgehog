@@ -18,15 +18,15 @@ machines in the sense that
 
 More system calls:
   stat?
-  wait/waitpid
-  ioctl? pipe?
-(Note that the intention of Hedgehog is /NOT/ to support all system
-calls - we're primarily interested in small M2M boxes where, for
-example, root is the only user and chown is therefore pretty
-useless...  But if someone really starts to use Hedgehog in other apps
-as well, then we'll listen and hopefully include their contribs.  If
-the number of system calls and subsequently the system requirements
-become painfully large, group then under suitable #ifdefs.)
+  pipe?
+(Note that the intention of Hedgehog is /NOT/ to support all possible
+and impossible system calls - we're primarily interested in small M2M
+boxes where, for example, root is the only user and chown is therefore
+pretty useless...  But if someone really starts to use Hedgehog in
+other apps as well, then we'll listen and hopefully include their
+contribs.  If the number of system calls and subsequently the system
+requirements become painfully large, group then under suitable
+#ifdefs.)
 
 Allocate the memory needed by unix-exec from the semispace.  
 Or use the old semispace (nah, bad idea, because we may wish to change
@@ -36,7 +36,7 @@ Signed/unsigned in interface-gen.pl.  Causes problems in
 (def-syntax unix-CRTSCTS -2147483648)
 
 Replace requirement for perl (in prelude.d/interface-gen.pl) and gawk
-(in hh_seed.awk and hh_version.awk) with python, which is already used
+(in hh_version.awk) with python, which is already used
 in generating the document.
 
 Add more constant folding rules to hh_opt.c
@@ -46,9 +46,6 @@ be usable both from byte code instructions to compress/decompress
 strings, and from the main program to decompress byte code files.
 Probably the best solution is something based on the Burrows-Wheeler
 transform.
-
-Add small, concise cryptographic hash and cipher algorithm(s).  SHA,
-AES, and DES, perhaps?
 
 Instead of having each instruction check its arguments, perhaps we
 should go towards a design where a special typecheck instruction

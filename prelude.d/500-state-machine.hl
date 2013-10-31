@@ -17,11 +17,12 @@
 ;; anything) and either a message received by the machine, or nil if
 ;; no message was received.  The function has to be written as a
 ;; sequence of variable bindings, goto "statements" indicating state
-;; change, wait "statements" indicating suspension of execution
-;; until the machine receives more input (or messages), and send
-;; "statements" which send messages to other machines.  The goto and
-;; wait statements do not allow the execution to preceed to the
-;; next statement, but send does.
+;; change, wait "statements" indicating suspension of execution until
+;; the machine receives more input (or messages), send "statements"
+;; which send messages to other machines, and when "statements" to
+;; expression conditional "statement" sequences.  The goto and wait
+;; statements do not allow the execution to preceed to the next
+;; statement, but send does.
 ;;
 ;; The machine may be woken up at any time before the desired timeout
 ;; expires with the 'timeout message.  When a state machine enters a
@@ -64,14 +65,14 @@
 (def-syntax (sm-goto ?new-state ?new-data)
   (sm-machine nil ?new-state ?new-data nil nil nil))
 
- ;; The maximum timeout to unix-select?  This is arbitrary, used
- ;; mainly to prevent integer overflow should some machine wish to
- ;; wait for more than 3 minutes.  Use 15 seconds for now - it also
- ;; forces programmers to test that 'timeout messages are handled
- ;; properly (perhaps just ignored).
 
 ;; The maximum timeout.  Timeouts given to sm-machine larger than this
 ;; value are silently capped to this value.
+;;
+;; This value is arbitrary, used mainly to prevent integer overflow
+;; should some machine wish to wait for more than 3 minutes.  Use 15
+;; seconds for now - it also forces programmers to test that 'timeout
+;; messages are handled properly (perhaps just ignored).
 
 (def-syntax sm-max-timeout 15000000)
 
@@ -194,29 +195,28 @@
 					      msgs)))))))
 
 
-(def-syntax (def-state-body ?name ?value ... ?rest)
+(def-syntax (def-state-body ?name ?value ... ?stmts)
   (do (set ?name ?value)
-      (def-state-body ... ?rest)))
+      (def-state-body ... ?stmts)))
 
 (def-syntax (def-state-body (send ?list-of-machines ?data)
-	                    ... ?rest)
-  (set ?t (def-state-body ... ?rest))
+	                    ... ?stmts)
+  (set ?t (def-state-body ... ?stmts))
   (set ?lom ?list-of-machines)
   (if ?lom
       (cons (sm-msg ?lom ?data) ?t)
       ?t))
 
-(def-syntax (def-state-body (wait ?cond ?new-data
-				      ?readables ?writables ?timeout)
-	                    ... ?rest)
-  (if ?cond
-      (sm-wait ?new-data ?readables ?writables ?timeout)
-    (def-state-body ... ?rest)))
+(def-syntax (def-state-body (wait ?new-data ?readables ?writables ?timeout))
+  (sm-wait ?new-data ?readables ?writables ?timeout))
 
-(def-syntax (def-state-body (goto ?new-state ?cond ?new-data) ... ?rest)
+(def-syntax (def-state-body (goto ?new-state ?new-data))
+  (sm-goto ?new-state ?new-data))
+
+(def-syntax (def-state-body (when ?cond ... ?then-stmts) ... ?stmts)
   (if ?cond
-      (sm-goto ?new-state ?new-data)
-    (def-state-body ... ?rest)))
+      (do (def-state-body ... ?then-stmts))
+      (do (def-state-body ... ?stmts))))
 
 (def-syntax (def-state-body)
   (panic "\nNo state transfer defined.\n"))

@@ -66,6 +66,7 @@ typedef signed long hh_signed_word_t;
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/time.h>
+#include <wait.h>
 
 #ifdef HH_UNIX
 #include <sys/stat.h>
@@ -139,10 +140,26 @@ void hh_panic(const char *fmt, ...);  /* Defined in hh_interp_*.c */
 
 #include <string.h>
 #ifndef HH_MEMCMP
-#define HH_MEMCMP(p, q, nbytes)      memcmp(p, q, nbytes)
+/* HH_MEMCMP should compare the bytes in p[0..n_bytes-1] and
+   q[0..n_bytes-1] as unsigned chars.  If this is not the case, the
+   person porting should define memcmp for example as follows:
+     int hh_memcmp(void *p, void *q, unsigned long n)
+     {
+       unsigned char *up = (unsigned char *) p;
+       unsigned char *uq = (unsigned char *) q;
+       while (n-- > 0) {
+         if (*up < *uq)
+           return -1;
+         else if (*up++ > *uq++)
+           return 1;
+       }
+       return 0;
+     }
+*/
+#define HH_MEMCMP(p, q, n_bytes)  memcmp(p, q, n_bytes)
 #endif
 #ifndef HH_MEMMOVE
-#define HH_MEMMOVE(to, from, nbytes)  memmove(to, from, nbytes)
+#define HH_MEMMOVE(to, from, n_bytes)  memmove(to, from, n_bytes)
 #endif
 
 
@@ -188,8 +205,7 @@ int hh_lisp_print_interpreter(struct hh_context_t *ctx, /* In hh_interp_*.c */
 
 /* A one-byte running counter for the version number of the byte code
    file format (the header, constant value and debugging information
-   representation).  There's a second value, the `HH_INSN_COOKIE',
-   which is a checksum for the instruction set. */
+   representation).  */
 #define HH_BCODE_VERSION   1
 
 

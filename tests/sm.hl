@@ -8,7 +8,7 @@
 
 (def-state (print-and-sleep _ msg)
   _ (print "PRINT-AND-SLEEP: msg = " msg "\n")
-  (wait t nil nil nil 10000000))
+  (wait nil nil nil 10000000))
 
 ;; A one-state machine which sends 'hello to another machine whenever
 ;; it receives a message, i.e. at least every third second when it
@@ -16,7 +16,7 @@
 (def-state (print-send-and-sleep recipients msg)
   _ (print "PRINT-SEND-AND-SLEEP: msg = " msg "\n")
   (send recipients 'hello)
-  (wait t recipients nil nil 3000000))
+  (wait recipients nil nil 3000000))
 
 
 ;; A little state machine trying to open a fifo (man fifo(4)) in file
@@ -32,21 +32,24 @@
 (def-state (open-file _ msg)
   _ (print "OPEN-FILE: msg = " msg "\n")
   fd (unix-open "/tmp/FIFO" (bitwise-or unix-O_RDONLY unix-O_NONBLOCK))
-  (wait (< fd 0) _ nil nil 5000000)
-  (goto read-fd t fd))
+  (when (< fd 0)
+	(wait _ nil nil 5000000))
+  (goto read-fd fd))
 
 (def-state (read-fd fd msg)
   _ (print "READ-FD: msg = " msg "\n")
-  (wait (or (eq? msg 'enter) (eq? msg 'timeout)) fd (list fd) nil 5000000)
+  (when (or (eq? msg 'enter) (eq? msg 'timeout))
+	(wait fd (list fd) nil 5000000))
   data (unix-read fd 256)
   _ (print "READ-FD: data = '" data "'\n")
-  (goto close-file (or (nil? data) (eq? data "")) fd)
-  (wait t fd (list fd) nil 5000000))
+  (when (or (nil? data) (eq? data ""))
+	(goto close-file fd))
+  (wait fd (list fd) nil 5000000))
 
 (def-state (close-file fd msg)
   _ (print "CLOSE-FD: msg = " msg "\n")
   _ (unix-close fd)
-  (goto open-file t nil))
+  (goto open-file nil))
 
 
 ;; A TCP/IP-based IRC-mockup, with at most four concurrenct
@@ -73,9 +76,11 @@
 
 (def-state (irc-slave-idle data msg)
   ;; Ignore enter and timeout msgs in this state.
-  (wait (or (eq? msg 'enter) (eq? msg 'timeout)) data nil nil sm-max-timeout)
+  (when (or (eq? msg 'enter) (eq? msg 'timeout))
+	(wait data nil nil sm-max-timeout))
   ;; Ignore messages sent by other slaves, i.e. strings written to them.
-  (wait (string? msg) data nil nil sm-max-timeout)
+  (when (string? msg)
+	(wait data nil nil sm-max-timeout))
   ;; The msg should now be a file descriptor for a socket, sent to us by
   ;; the accept thread.
   fd msg
@@ -85,34 +90,35 @@
   msg (strcat "Hello, I'm " (symboltostring (slave-data-name data))
 	      " and I'm very happy to serve you.\r\n")
   r (unix-write fd msg)
-  (goto irc-slave-close (< r 0) data)
-  (goto irc-slave-loop t data))
+  (when (< r 0)
+	(goto irc-slave-close data))
+  (goto irc-slave-loop data))
 
 (def-state (irc-slave-loop data msg)
   fd (slave-data-fd data)
   ;; Ignore enter and timeout msgs in this state.
-  (wait (or (eq? msg 'enter) (eq? msg 'timeout)) 
-	data (list fd) nil sm-max-timeout)
+  (when (or (eq? msg 'enter) (eq? msg 'timeout))
+	(wait data (list fd) nil sm-max-timeout))
   _ (print "IRC-SLAVE-LOOP: " (slave-data-name data) ", msg = " msg "\n")
   ;; If the msg is a unix string, then it is something we should write to
   ;; our socket.  Goto irc-slave-close on failure, loop back on success.
-  (goto irc-slave-close
-	(and (string? msg)
-	     (< (unix-write fd msg) 0))
-	data)
-  (wait (string? msg) data (list fd) nil sm-max-timeout)
+  (when (and (string? msg) (< (unix-write fd msg) 0))
+	(goto irc-slave-close data))
+  (when (string? msg)
+	(wait data (list fd) nil sm-max-timeout))
   ;; The msg is a '(readable fd).  Read something from the socket and
   ;; send it to all other machines, or in case of failure, close the socket.
   s (unix-read fd 256)
-  (goto irc-slave-close (nil? s) data)
+  (when (nil? s)
+	(goto irc-slave-close data))
   (send (if (eq? s "")
 	    ;; Don't send an empty string.
 	    nil
 	  ;; Don't send to ourselves.
-	  (cdr (split (fn (name) (eq? name (slave-data-name data))) 
+	  (cdr (split (fn (name) (eq? name (slave-data-name data)))
 		      irc-slaves)))
 	s)
-  (wait t data (list fd) nil sm-max-timeout))
+  (wait data (list fd) nil sm-max-timeout))
 
 (def-state (irc-slave-close data msg)
   _ (print "IRC-SLAVE-CLOSE: " (slave-data-name data) ", msg = " msg "\n")
@@ -120,7 +126,7 @@
   ;; Inform the accept loop we're free again.
   (send 'irc-accept (slave-data-name data))
   ;; Go to the idle state.
-  (goto irc-slave-idle t data))
+  (goto irc-slave-idle data))
 
 
 ;; The accept loop.
@@ -137,50 +143,55 @@
   fd (unix-socket unix-AF_INET unix-SOCK_STREAM 0)
   _ (if (< fd 0) 
 	(print "socket() failed, errno = " (unix-errno) "\n"))
-  (wait (< fd 0) data nil nil 1000000)
+  (when (< fd 0)
+	(wait data nil nil 1000000))
   ;; Bind the socket to the port.  Close and restart if failed.
   sockaddr_in (ip-sockaddr_in irc-port unix-INADDR_ANY)
   x (unix-bind fd sockaddr_in)
   _ (if (< x 0)
 	(do (print "bind() failed, errno = " (unix-errno) "\n")
 	    (unix-close fd)))
-  (wait (< x 0) data nil nil 1000000)
+  (when (< x 0)
+	(wait data nil nil 1000000))
   ;; Listen to the socket.  Close and restart if failed.
   x (unix-listen fd 5)
   _ (if (< x 0)
 	(do (print "listen() failed, errno = " (unix-errno) "\n")
 	    (unix-close fd)))
-  (wait (< x 0) data nil nil 1000000)
+  (when (< x 0)
+	(wait data nil nil 1000000))
   ;; Just for safety, make the accept non-blocking.
   x (unix-fcntl fd unix-F_SETFL unix-O_NONBLOCK)
   _ (if (< x 0)
 	(do (print "fcntl(fd, F_SETFL, O_NONBLOCK) failed, errno = "
 		   (unix-errno) "\n")
 	    (unix-close fd)))
-  (wait (< x 0) data nil nil 1000000)
+  (when (< x 0)
+	(wait data nil nil 1000000))
   ;; Ok, now we're ready to fly!
   _ (print "IRC-MASTER-STARTed on port " irc-port "\n")
-  (goto irc-master-accept t (master-data-with-fd data fd)))
+  (goto irc-master-accept (master-data-with-fd data fd)))
 
 (def-state (irc-master-accept data msg)
   fd (master-data-fd data)
   free-slaves (master-data-free-slaves data)
   ;; Ignore enter and timeout msgs in this state.
-  (wait (or (eq? msg 'enter) (eq? msg 'timeout)) data
-	(list fd) nil sm-max-timeout)
-  _(print "IRC-MASTER-ACCEPT: data = " data ", msg = " msg "\n")
+  (when (or (eq? msg 'enter) (eq? msg 'timeout))
+	(wait data (list fd) nil sm-max-timeout))
+  _ (print "IRC-MASTER-ACCEPT: data = " data ", msg = " msg "\n")
   ;; If the message is a slave name, it is sent to us to indicate that
   ;; the slave is now free for new clients.
-  (wait (symbol? msg)
-	(master-data-with-free-slaves data (cons msg free-slaves))
-	(list fd) nil sm-max-timeout)
+  (when (symbol? msg)
+	(wait (master-data-with-free-slaves data (cons msg free-slaves))
+	      (list fd) nil sm-max-timeout))
   ;; If the message was '(readable ...), which we're here a little
   ;; lazy to check, then we have a new connection.
   acc (unix-accept fd)
   _ (print "accept() = " acc "\n")
-  (wait (and (nil? acc) (= (unix-errno) unix-EAGAIN))
-	data (list fd) nil sm-max-timeout)
-  (goto irc-master-close (nil? acc) data)
+  (when (and (nil? acc) (= (unix-errno) unix-EAGAIN))
+	(wait data (list fd) nil sm-max-timeout))
+  (when (nil? acc)
+	(goto irc-master-close data))
   ;; Send a free slave the accepted file descriptor.
   (send (if free-slaves (car free-slaves) nil) (car acc))
   free-slaves (if (nil? free-slaves)
@@ -190,13 +201,13 @@
 		      (unix-close (car acc))
 		      free-slaves)
 		(cdr free-slaves))
-  (wait t (master-data-with-free-slaves data free-slaves)
+  (wait (master-data-with-free-slaves data free-slaves)
 	(list fd) nil sm-max-timeout))
 
 (def-state (irc-master-close data msg)
   _ (print "IRC-MASTER-CLOSE\n")
   _ (unix-close (master-data-fd data))
-  (goto irc-master-start t data))
+  (goto irc-master-start data))
 
 
 (let machines nil

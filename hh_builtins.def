@@ -1,5 +1,5 @@
 /* This file is part of Hedgehog LISP.
- * Copyright (C) 2003, 2004, 2005 Oliotalo Ltd.
+ * Copyright (C) 2003, 2004, 2005, 2006 Oliotalo Ltd.
  * See file LICENSE.LGPL for pertinent licensing conditions.
  *
  * Authors: Kenneth Oksanen <cessu@iki.fi>
@@ -896,6 +896,31 @@ BUILTIN("hedgehog-version", hedgehog_version,
 MODULE_END
 
 
+MODULE("Crypto")
+
+BUILTIN("shared-secret", shared_secret,
+        "Return a 32-byte string containing the shared secret (or rather its "
+	"256-bit cryptographic hash).",
+        ,
+        GEN_INSN(shared_secret, 0))
+
+BUILTIN("crypto-hash", crypto_hash,
+        "Return a 32-byte string containing the SHA-256 digest of the "
+	"argument string.",
+        ARG(data, STRING_CELL, "String to hash"),
+        GEN_INSN(crypto_hash, 1))
+
+BUILTIN("crypto-cipher", crypto_chipher,
+        "Encrypt/decrypt the given string with the given password (with a "
+	"slightly beefed up variant of XXTEA).",
+        ARG(data, STRING_CELL, "String to en/decrypt")
+        ARG(encrypt, EMPTY_CELL, "True if encrypt, otherwise decrypt")
+        ARG(passwd, STRING_CELL, "Password, at least 16 bytes long"),
+        GEN_INSN(crypto_cipher, 3))
+
+MODULE_END
+
+
 #ifdef HH_UNIX
 
 MODULE("UNIX")
@@ -910,6 +935,11 @@ BUILTIN("unix-fork", unix_fork,
     	"Perform UNIX fork.",
 	,
 	GEN_INSN(unix_fork, 0))
+
+BUILTIN("unix-wait", unix_wait,
+    	"Perform a non-blocking wait, return t if a child process has exited.",
+	,
+	GEN_INSN(unix_wait, 0))
 
 BUILTIN("unix-exec", unix_exec,
     	"Perform UNIX execve.  The first and second argument have "
@@ -1001,14 +1031,14 @@ BUILTIN("unix-fcntl", unix_fcntl,
 	ARG(data, EMPTY_CELL, "nil or an integer or string argument."),
 	GEN_INSN(unix_fcntl, 3))
 
-#if 0
 BUILTIN("unix-ioctl", unix_ioctl,
-	"See ioctl(2).",
+	"See ioctl(2).  Returns ioctl's return value when the third argument "
+	"is integer, or a cons of ioctl return value and the possibly altered "
+	"third argument string.",
 	ARG(fd, INTEGER_CELL, "File descriptor.")
 	ARG(cmd, INTEGER_CELL, "Command, see ioctl(2).")
 	ARG(data, EMPTY_CELL, "Integer or string argument."),
 	GEN_INSN(unix_ioctl, 3))
-#endif
 
 BUILTIN("unix-connect", unix_connect,
     	"See connect(2).",

@@ -56,54 +56,6 @@
   } while (0)
 
 
-/* Internal state of a single HedgeHog interpreter execution.
- */
-
-typedef struct hh_context_t {
-  unsigned char *program;
-  unsigned char *pc;
-  hh_word_t accu, env, new_env;
-  hh_word_t *sp;
-  hh_word_t stack_n_words;
-  /* `heap' is the pointer to the current heap, and during collection,
-     the to-space.  `old_heap' is correspondingly the from-space.  For
-     various convenience and performance reasons allocation happens
-     downwords starting from `heap + heap_n_words', but upwards during
-     garbage collection.  The field `heap_free' tells how high the
-     allocation took place during the last gc, and `heap_ptr' is the
-     current allocation pointer during normal allocation. */
-  hh_word_t *heap, *old_heap, *heap_ptr, *heap_free;
-  hh_word_t heap_n_words;
-  /* Pointer to the beginning of the constant pool. */
-  hh_word_t *constant;
-#ifdef HH_UNIX
-  /* This part is included if we are in a UNIX and support select(2).
-     See the documentation of hh_interp_step below for information
-     about these fields. */
-  fd_set select_read_fds, select_write_fds;
-  int select_max_fd;
-  struct timeval select_timeout;
-  int select_retval;
-  unsigned char program_wants_to_select;
-#endif
-#ifdef HH_TESTING
-  hh_word_t offending_value;
-  unsigned char insn_trace_enabled;
-  unsigned char gc_trace_enabled;
-  /* If profiling is enabled, then this is a pointer to a `hh_word_t'
-     array as large as the number of byte code insns in the entire
-     program.  When executing an insn, the corresponding slot in the
-     array is incremented.  If profiling is disabled, this is NULL. */
-  hh_word_t *profile_data;
-  hh_word_t redzone;
-#endif
-  /* The run-time stack is below.  `hh_context_allocate' allocates
-     extra memory for this struct, and the stack grows there. */
-  hh_word_t stack[1];
-  /* Do not add any additional fields here! */
-} hh_context_t;
-
-
 /* Instruction mnemonics. */
 
 typedef enum {
@@ -139,6 +91,60 @@ typedef enum {
   HH_NUMBER_OF_IMMS,
 } hh_imm_insn_t;
 
+
+/* Internal state of a single HedgeHog interpreter execution.
+ */
+
+typedef struct hh_context_t {
+  unsigned char *program;
+  /* `heap' is the pointer to the current heap, and during collection,
+     the to-space.  `old_heap' is correspondingly the from-space.  For
+     various convenience and performance reasons allocation happens
+     downwords starting from `heap + heap_n_words', but upwards during
+     garbage collection.  The field `heap_free' tells how high the
+     allocation took place during the last gc, and `heap_ptr' is the
+     current allocation pointer during normal allocation. */
+  hh_word_t *heap, *old_heap, *heap_ptr, *heap_free;
+  hh_word_t heap_n_words;
+  /* Pointer to the beginning of the constant pool. */
+  hh_word_t *constant;
+  /* The rest of this structure is not needed by the compiler. */
+#ifndef HH_COMPILER
+  unsigned char *pc;
+  hh_word_t accu, env, new_env;
+  hh_word_t *sp;
+  hh_word_t stack_n_words;
+#ifdef HH_UNIX
+  /* This part is included if we are in a UNIX and support select(2).
+     See the documentation of hh_interp_step below for information
+     about these fields. */
+  fd_set select_read_fds, select_write_fds;
+  int select_max_fd;
+  struct timeval select_timeout;
+  int select_retval;
+  unsigned char program_wants_to_select;
+#endif
+#ifdef HH_TESTING
+  hh_word_t offending_value;
+  unsigned char insn_trace_enabled;
+  unsigned char gc_trace_enabled;
+  /* If profiling is enabled, then this is a pointer to a `hh_word_t'
+     array as large as the number of byte code insns in the entire
+     program.  When executing an insn, the corresponding slot in the
+     array is incremented.  If profiling is disabled, this is NULL. */
+  hh_word_t *profile_data;
+  hh_word_t redzone;
+#endif
+  /* The run-time stack is below.  `hh_context_allocate' allocates
+     extra memory for this struct, and the stack grows there. */
+  hh_word_t stack[1];
+  /* Do not add any additional fields here! */
+#endif /* !HH_COMPILER */
+} hh_context_t;
+
+
+/* The rest of this file is not needed by the compiler. */
+#ifndef HH_COMPILER
 
 /* Check the given program file is correct and executable on this byte
    code interpreter.  This function also fixes the byte order of the
@@ -203,5 +209,6 @@ void hh_backtrace(hh_context_t *ctx);
 
 #endif /* HH_SMALL */
 
+#endif /* !HH_COMPILER */
 
 #endif /* !HH_INTERP */

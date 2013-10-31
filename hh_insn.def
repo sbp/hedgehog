@@ -1,5 +1,5 @@
 /* This file is part of Hedgehog LISP.
- * Copyright (C) 2003, 2004, 2005 Oliotalo Ltd.
+ * Copyright (C) 2003, 2004, 2005, 2006 Oliotalo Ltd.
  * See file LICENSE.LGPL for pertinent licensing conditions.
  *
  * Authors: Kenneth Oksanen <cessu@iki.fi>
@@ -165,7 +165,6 @@ INSN(chr,
      HH_PURE,
      {
        unsigned char c;
-       hh_signed_word_t sw;
 
        /* HH_RESERVE(HH_STRING_N_WORDS(1)); */
        HH_CHECK(accu, HH_WORD_IS_SHORT(accu), HH_ERROR_EXPECT_SHORT);
@@ -1302,6 +1301,66 @@ IMM(get_env,
       goto maybe_accu_to_ptr;
     })
 
+EXT_INSN(shared_secret,
+    HH_PURE,
+    {
+      HH_RESERVE(HH_STRING_N_WORDS(32));
+      accu = hh_box_string(ctx, hh_shared_secret, 32);
+      goto reserve_and_accu_to_ptr;
+    })
+
+EXT_INSN(crypto_hash,
+    HH_PURE,
+    {
+      unsigned char buf[32];
+
+      HH_CHECK(accu, HH_WORD_IS_PTR(accu), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(accu, HH_IS_STRING(accu_as_ptr), HH_ERROR_EXPECT_STRING);
+
+      /* We assume the string length is within the small integer
+         range from -2^30 to 2^30-1 */
+      HH_RESERVE(HH_STRING_N_WORDS(32));
+      hh_sha256(HH_STRING_PTR(accu_as_ptr),
+		HH_STRING_LEN(accu_as_ptr),
+		buf);
+      accu = hh_box_string(ctx, buf, 32);
+      goto reserve_and_accu_to_ptr;
+    })
+
+EXT_INSN(crypto_cipher,
+    0,
+    {
+      hh_word_t *buf;
+      hh_word_t buf_len;
+
+      HH_CHECK(accu, HH_WORD_IS_PTR(accu), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(accu, HH_IS_STRING(accu_as_ptr), HH_ERROR_EXPECT_STRING);
+
+      if (HH_STRING_LEN(accu_as_ptr) < 16)
+	goto crypto_cipher_failure;
+
+      HH_CHECK(sp[-2], HH_WORD_IS_PTR(sp[-2]), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(sp[-2], HH_IS_STRING(HH_WORD_TO_PTR(ctx, sp[-2])),
+	       HH_ERROR_EXPECT_STRING);
+
+      w = HH_STRING_LEN(HH_WORD_TO_PTR(ctx, sp[-2]));
+      HH_RESERVE(HH_STRING_N_WORDS(w + 19));
+      buf = hh_alloc_string(ctx, w + 19);
+
+      if (hh_xxtea(HH_STRING_PTR(HH_WORD_TO_PTR(ctx, sp[-2])), w,
+		   HH_STRING_PTR(buf), &buf_len,
+		   !HH_IS_FALSE(sp[-1]),
+		   HH_STRING_PTR(accu_as_ptr))) {
+	buf[0] = HH_STRING_HDR(buf_len);
+	accu = HH_PTR_TO_WORD(ctx, buf, 0x04);
+      } else {
+      crypto_cipher_failure:
+	accu = HH_NIL;
+      }
+      sp -= 2;
+      goto reserve_and_maybe_accu_to_ptr;
+    })
+
 #ifdef HH_UNIX
 
 EXT_INSN(unix_gettimeofday,
@@ -1326,6 +1385,15 @@ EXT_INSN(unix_fork,
     0,
     {
       accu = HH_SHORT_TO_WORD(fork());
+    })
+
+EXT_INSN(unix_wait,
+    0,
+    {
+      if (waitpid(-1, NULL, WNOHANG) > 0)
+	accu = HH_TRUE;
+      else
+	accu = HH_FALSE;
     })
 
 EXT_INSN(unix_exec,
@@ -1596,56 +1664,35 @@ EXT_INSN(unix_fcntl,
       sp -= 2;
     })
 
-#if 0
-/* This is a user contribution, but because it is not quite correct,
-   lacks support in prelude.d/unix-interface, and is rather
-   non-lispish, it isn't taken out of #if 0 .. #endif's yet.  But
-   it'll be included in some release rather soon. // Cessu */
 EXT_INSN(unix_ioctl,
     0,
     {
       HH_CHECK(sp[-2], HH_WORD_IS_SHORT(sp[-2]), HH_ERROR_EXPECT_SHORT);
       HH_CHECK(sp[-1], HH_WORD_IS_SHORT(sp[-1]), HH_ERROR_EXPECT_SHORT);
       if (HH_WORD_IS_INT(accu)) {
-	int arg;
-	int sw;
-	
-	arg = HH_WORD_TO_SHORT(accu);
-	sw = HH_SHORT_TO_WORD(ioctl(HH_WORD_TO_SHORT(sp[-2]),
-				    HH_WORD_TO_SHORT(sp[-1]),
-				    arg));
-	
-	sp -= 2;
-	HH_CONS(ctx, accu_as_ptr, accu,
-		HH_SHORT_TO_WORD(sw),
-		HH_SHORT_TO_WORD(arg));
+	/* HH_RESERVE(HH_CONS_N_WORDS); */
+	accu = HH_SHORT_TO_WORD(ioctl(HH_WORD_TO_SHORT(sp[-2]),
+				      HH_WORD_TO_SHORT(sp[-1]),
+				      HH_WORD_TO_SHORT(accu)));
       } else {
-	unsigned char buf[1024];
-	int slen;
-	int sw;
-	
-	HH_CHECK(accu, HH_WORD_IS_PTR(accu), HH_ERROR_EXPECT_STRING);
-	HH_CHECK(accu, HH_IS_STRING(accu_as_ptr), HH_ERROR_EXPECT_STRING);
-	slen = HH_STRING_LEN(accu_as_ptr);
-	/* XXX bad error message... and should this really
-	   allocate the buffer with malloc() if the string is longer
-	   than 1024 bytes... */
-	HH_CHECK(accu, slen <= sizeof buf, HH_ERROR_EXPECT_STRING);
-	
-	memcpy(buf, HH_STRING_PTR(accu_as_ptr), slen);
-	
-	sw = HH_SHORT_TO_WORD(ioctl(HH_WORD_TO_SHORT(sp[-2]),
-				    HH_WORD_TO_SHORT(sp[-1]),
-				    buf));
-	
-	sp -= 2;
+	HH_CHECK(accu, HH_WORD_IS_PTR(accu), HH_ERROR_EXPECT_STRING_OR_INT);
+	HH_CHECK(accu, HH_IS_STRING(accu_as_ptr),
+		 HH_ERROR_EXPECT_STRING_OR_INT);
+	/* Make a copy of the argument string. */
+	w = HH_STRING_LEN(accu_as_ptr);
+	HH_RESERVE(HH_CONS_N_WORDS + HH_STRING_N_WORDS(w));
+	accu = hh_box_string(ctx, HH_STRING_PTR(accu_as_ptr), w);
+	/* Call the ioctl and return the cons of its return value and
+	   the argument string possibly altered by ioctl. */
 	HH_CONS(ctx, accu_as_ptr, accu,
-		HH_SHORT_TO_WORD(sw),
-		hh_box_string(ctx, buf, slen));
+		HH_SHORT_TO_WORD(ioctl(HH_WORD_TO_SHORT(sp[-2]),
+				       HH_WORD_TO_SHORT(sp[-1]),
+				       HH_STRING_PTR(accu))),
+		accu);
       }
+      sp -= 2;
       goto reserve_for_next;
     })
-#endif
 
 
 EXT_INSN(unix_connect,
@@ -1694,7 +1741,7 @@ EXT_INSN(unix_accept,
     {
       {
 	struct sockaddr addr;
-	socklen_t addrlen;
+	socklen_t addrlen = sizeof(addr);
 	
 	HH_RESERVE(HH_CONS_N_WORDS + HH_STRING_N_WORDS(sizeof(addr)));
 	HH_CHECK(accu, HH_WORD_IS_SHORT(accu), HH_ERROR_EXPECT_SHORT);

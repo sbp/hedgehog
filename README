@@ -129,6 +129,11 @@ XXX Here comes a little tour of the prelude.
 
 XXX Design and write a guide.
 
+If memcmp performs signed comparison of bytes on your platform, you
+must define HH_MEMCMP to some function which performs unsigned
+comparison.  This is necessary for Lisp-level string comparisons and
+compression to work correctly.
+
 The macros HH_UNIX, HH_SUNOS, HH_BSD, HH_LINUX etc. refer to the
 target platform where we run hhi, but not necessarily to hhc.
 

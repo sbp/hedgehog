@@ -1,4 +1,4 @@
-# This file has NOT been created by autoconf.  ;-)
+# This file has NOT been created by autoconf.  Please DO modify it!  ;-)
 #
 # This file is part of Hedgehog LISP.
 # Copyright (C) 2003, 2004, 2005 Oliotalo Ltd.
@@ -8,10 +8,16 @@
 #          Kenneth Oksanen <cessu@iki.fi>
 #
 
-if [ $# -ne 2 ]
+if [ $# -eq 3 ]
 then
-  echo "Usage: $0 target-type prefix"
-  exit 1
+  shared_secret=-DHH_SHARED_SECRET=\\\\\"$3\\\\\"
+else
+  if [ $# -ne 2 ]
+  then
+    echo "Usage: $0 target-type prefix [shared-secret]"
+    exit 1
+  fi
+  shared_secret=-DHH_SHARED_SECRET=\\\\\"\\\\\"
 fi
 
 prefix=$2
@@ -146,11 +152,11 @@ case "$hosttype,$1" in
 	LD2=:
 	L2FLAGS=''
 
-	XCC=/usr/local/arm/2.95.3/bin/arm-linux-gcc
+	XCC=/usr/local/arm/bin/arm-linux-gcc
 	XCFLAGS='-Wall -Os -I. -I$(srcdir) -DHH_LINUX -DHH_SMALL'
 	XLD='$(XCC)'
 	XLDOUTPUT='-o $@'
-	XLFLAGS='-s -L/usr/local/arm/2.95.3/lib'
+	XLFLAGS='-static -s -L/usr/local/arm/lib'
 	XLIBS=''
 	XLD2=:
 	XL2FLAGS=''
@@ -176,7 +182,7 @@ case "$hosttype,$1" in
 	XCFLAGS='-Wall -Os -I. -I$(srcdir) -DHH_SMALL'
 	XLD='$(XCC)'
 	XLDOUTPUT='-o $@'
-	XLFLAGS='-s -L/usr/local/arm/2.95.3/lib'
+	XLFLAGS='-static -s -L/usr/local/arm/2.95.3/lib'
 	XLIBS=''
 	XLD2=:
 	XL2FLAGS=''
@@ -272,5 +278,6 @@ sed "s#@srcdir@#$srcdir#g;
      s#@boot@#$boot#g;
      s#@targets@#$targets#g;
      s#@prefix@#$prefix#g;
+     s#@shared_secret@#$shared_secret#g;
      s#@suffix@#$suffix#g;
     " $srcdir/Makefile.in > Makefile

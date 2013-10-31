@@ -12,7 +12,7 @@ VPATH = @vpath@
 HHVER = $(shell awk -f $(srcdir)/hh_version.awk $(srcdir)/hh_common.h)
 
 CC = @CC@
-CFLAGS = @CFLAGS@ -DHEDGEHOG_VERSION_STRING='"$(HHVER)"' \
+CFLAGS = @CFLAGS@ @shared_secret@ -DHEDGEHOG_VERSION_STRING='"$(HHVER)"' \
     -DDEFAULT_PRELUDE='"$(prefix)/lib/hh/prelude.d$(suffix)"'
 LIBS = @LIBS@
 LD = @LD@
@@ -47,16 +47,20 @@ hhc$(suffix): hh_lex.o hh_ast.o hh_compiler.o hh_lambda.o hh_macroexpand.o \
 	$(LD2) @L2FLAGS@
 
 hhi$(suffix): hh_data.o hh_interp.o hh_error.o hh_avl.o hh_printf.o \
-    $(platform) $(boot)
+    hh_crypto.o $(platform) $(boot)
 	$(XLD) $(XLFLAGS) @XLDOUTPUT@ $^ $(XLIBS)
 	$(XLD2) @XL2FLAGS@
 
-hh_avl.o hh_interp.o hh_data.o hh_error.o hh_printf.o $(platform):
-	$(XCC) $(XCFLAGS) -c $<
+hh_seed: hh_seed.o hh_crypto_host.o
+	$(LD) $(LFLAGS) @LDOUTPUT@ $^ $(LIBS)
+	$(LD2) @L2FLAGS@
 
-hh_seed.h: hh_insn.def hh_seed.awk
-	rm -f hh_seed.h
-	$(AWK) -f $(srcdir)/hh_seed.awk < $(srcdir)/hh_insn.def > hh_seed.h
+hh_seed.h: hh_insn.def hh_seed
+	rm -f hh_seed.h 
+	./hh_seed < $(srcdir)/hh_insn.def > hh_seed.h
+
+hh_avl.o hh_interp.o hh_data.o hh_error.o hh_printf.o hh_crypto.o $(platform):
+	$(XCC) $(XCFLAGS) -c $<
 
 hh_lex.c: hh_lex.l
 	flex -t -Phh_ $(srcdir)/hh_lex.l > hh_lex.c
@@ -65,7 +69,8 @@ hh_data_compiler.c: hh_data.c
 	echo '#define HH_COMPILER  1' > hh_data_compiler.c
 	cat $(srcdir)/hh_data.c >> hh_data_compiler.c
 
-hh_data_compiler.o: hh_data_compiler.c
+hh_crypto_host.c: hh_crypto.c
+	cp $(srcdir)/hh_crypto.c hh_crypto_host.c
 
 hh_boot.h: hh_boot.hl hhc hh_seed.h
 	./hhc -X -o hh_boot.h -p $(srcdir)/prelude.d $(srcdir)/hh_boot.hl
@@ -143,9 +148,9 @@ install:
 
 clean:
 	rm -f core *~ *.o *.a \#* hh_lex.c *.axf *.incl def2doc
-	rm -f def2doc hhc hhi builtins.incl linked-list.png hh_seed.h
+	rm -f def2doc hhc hhi hh_seed builtins.incl linked-list.png hh_seed.h
 	rm -f hhi.bin *.exe hh_boot.cod hh_boot.asm hh_boot.h
-	rm -f hh_data_compiler.c
+	rm -f hh_data_compiler.c hh_crypto_host.c 
 	rm -f hh.html hh.ps hh.pdf oliodoc.css prelude.hl
 	rm -f 300-*
 	rm -rf prelude.d
@@ -153,11 +158,11 @@ clean:
 
 # The dependencies below this line have been generated with `gcc *.c -MM'.
 # And then duplicate the dependencies of `hh_data.o' for `hh_data_compiler.o'.
-def2doc.o: def2doc.c hh_builtins.def
+def2doc.o: def2doc.c hh_common.h hh_builtins.def
 hh_ast.o: hh_ast.c hh_common.h hh_ast.h hh_builtins.def hh_data.h \
   hh_interp.h hh_error.h hh_error.def hh_insn.def
 hh_avl.o: hh_avl.c hh_common.h hh_error.h hh_error.def hh_avl.h hh_data.h \
-  hh_interp.h hh_insn.def
+  hh_interp.h hh_insn.def hh_printf.h
 hh_codegen.o: hh_codegen.c hh_common.h hh_ast.h hh_builtins.def hh_data.h \
   hh_interp.h hh_error.h hh_error.def hh_insn.def hh_codegen.h \
   hh_lambda.h
@@ -165,16 +170,18 @@ hh_compiler.o: hh_compiler.c hh_common.h hh_ast.h hh_builtins.def \
   hh_macroexpand.h hh_opt.h hh_lambda.h hh_uses.h hh_codegen.h \
   hh_interp.h hh_error.h hh_error.def hh_insn.def hh_peephole.h \
   hh_output.h
-hh_data.o: hh_data.c hh_common.h hh_error.h hh_error.def hh_interp.h \
-  hh_insn.def hh_data.h hh_avl.h
-hh_data_compiler.o: hh_data.c hh_common.h hh_error.h hh_error.def hh_interp.h \
-  hh_insn.def hh_data.h hh_avl.h
-hh_error.o: hh_error.c hh_common.h hh_error.h hh_error.def hh_interp.h \
+hh_crypto.o: hh_crypto.c hh_common.h hh_interp.h hh_error.h hh_error.def \
   hh_insn.def
+hh_data.o: hh_data.c hh_common.h hh_error.h hh_error.def hh_interp.h \
+  hh_insn.def hh_data.h hh_printf.h hh_avl.h
+hh_data_compiler.o: hh_data.c hh_common.h hh_error.h hh_error.def hh_interp.h \
+  hh_insn.def hh_data.h hh_printf.h hh_avl.h
+hh_error.o: hh_error.c hh_common.h hh_error.h hh_error.def hh_interp.h \
+  hh_insn.def hh_data.h hh_printf.h
 hh_interp.o: hh_interp.c hh_common.h hh_interp.h hh_error.h hh_error.def \
-  hh_insn.def hh_data.h hh_avl.h hh_seed.h
+  hh_insn.def hh_data.h hh_printf.h hh_avl.h hh_crypto.h hh_seed.h
 hh_interp_unix.o: hh_interp_unix.c hh_common.h hh_interp.h hh_error.h \
-  hh_error.def hh_insn.def hh_data.h
+  hh_error.def hh_insn.def hh_data.h hh_printf.h
 hh_lambda.o: hh_lambda.c hh_common.h hh_ast.h hh_builtins.def
 hh_lex.o: hh_lex.c hh_common.h hh_ast.h hh_builtins.def
 hh_macroexpand.o: hh_macroexpand.c hh_common.h hh_ast.h hh_builtins.def \
@@ -186,4 +193,5 @@ hh_output.o: hh_output.c hh_common.h hh_codegen.h hh_ast.h \
 hh_peephole.o: hh_peephole.c hh_common.h hh_data.h hh_interp.h hh_error.h \
   hh_error.def hh_insn.def hh_codegen.h hh_ast.h hh_builtins.def
 hh_printf.o: hh_printf.c hh_printf.h
+hh_seed.o: hh_seed.c hh_crypto.h hh_common.h
 hh_uses.o: hh_uses.c hh_common.h hh_ast.h hh_builtins.def

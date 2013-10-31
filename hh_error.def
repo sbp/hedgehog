@@ -1,5 +1,5 @@
 /* This file is part of Hedgehog LISP.
- * Copyright (C) 2003, 2004 Oliotalo Ltd.
+ * Copyright (C) 2003, 2004, 2005, 2006 Oliotalo Ltd.
  * See file LICENSE.LGPL for pertinent licensing conditions.
  *
  * Author: Kenneth Oksanen <cessu@iki.fi>
@@ -25,6 +25,10 @@ ERROR(HH_ERROR_EXPECT_STRING_LIST,
 ERROR(HH_ERROR_EXPECT_NONEMPTY_STRING,
       HH_PROGRAM_FATAL,
       "Expected a non-empty string")
+
+ERROR(HH_ERROR_EXPECT_STRING_OR_INT,
+      HH_PROGRAM_FATAL,
+      "Expected a string or integer")
 
 ERROR(HH_ERROR_EXPECT_INT,
       HH_PROGRAM_FATAL,
