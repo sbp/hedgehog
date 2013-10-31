@@ -1,5 +1,5 @@
 /* This file is part of Hedgehog LISP.
- * Copyright (C) 2003, 2004 Oliotalo Ltd.
+ * Copyright (C) 2003, 2004, 2005 Oliotalo Ltd.
  * See file LICENSE.LGPL for pertinent licensing conditions.
  *
  * Authors: Kenneth Oksanen <cessu@iki.fi>
@@ -1001,6 +1001,15 @@ BUILTIN("unix-fcntl", unix_fcntl,
 	ARG(data, EMPTY_CELL, "nil or an integer or string argument."),
 	GEN_INSN(unix_fcntl, 3))
 
+#if 0
+BUILTIN("unix-ioctl", unix_ioctl,
+	"See ioctl(2).",
+	ARG(fd, INTEGER_CELL, "File descriptor.")
+	ARG(cmd, INTEGER_CELL, "Command, see ioctl(2).")
+	ARG(data, EMPTY_CELL, "Integer or string argument."),
+	GEN_INSN(unix_ioctl, 3))
+#endif
+
 BUILTIN("unix-connect", unix_connect,
     	"See connect(2).",
 	ARG(fd, INTEGER_CELL, "Socket.")
@@ -1062,6 +1071,9 @@ BUILTIN("unix-lseek", unix_lseek,
 	ARG(whence, INTEGER_CELL, "SEEK_SET, SEEK_CUR or SEEK_END."),
 	GEN_INSN(unix_lseek, 3))
 
+#if defined(HH_LINUX) || defined(HH_BSD) || defined(HH_SUNOS)
+/* The unix_mount instruction has been ported only to Linux, FreeBSD
+   (possibly coincidentally other BSDs), and Solaris. */
 BUILTIN("unix-mount", unix_mount,
     	"See mount(2).",
 	ARG(source, STRING_CELL, "Source (e.g. device).")
@@ -1070,6 +1082,7 @@ BUILTIN("unix-mount", unix_mount,
 	ARG(flags, INTEGER_CELL, "Flags.")
 	ARG(data, STRING_CELL, "Addition fstype-dependent data, or nil."),
 	GEN_INSN(unix_mount, 5))
+#endif
 
 BUILTIN("unix-umount", unix_umount,
     	"See umount(2).",
@@ -1123,11 +1136,15 @@ BUILTIN("unix-tcflow", unix_tcflow,
 	ARG(action, INTEGER_CELL, "See tcaction(3)."),
 	GEN_INSN(unix_tcflow, 2))
 
+#ifndef HH_SUNOS
+
 BUILTIN("unix-cfmakeraw", unix_cfmakeraw,
     	"See cfmakeraw(3).  Returns the raw's termios struct as a Lisp "
 	"string.",
 	ARG(termios, STRING_CELL, "Unraw'd termios struct as a Lisp string."),
 	GEN_INSN(unix_cfmakeraw, 1))
+
+#endif
 
 BUILTIN("unix-cfgetispeed", unix_getispeed,
     	"See cfgetispeed(3).",

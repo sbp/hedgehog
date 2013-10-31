@@ -29,10 +29,13 @@ directory, are distributed the revised BSD license, which allows them
 to be included also in programs that are distributed without full
 source code.  See the files LICENSE.LGPL and LICENSE.BSD.
 
-This public version works on Linux and should be trivially portable to
-any Posix system.  Support, alternative licenses, and ports to other
-platforms can be discussed with Oliotalo Ltd.  The ports have support
-for various protocols and devices specific for that platform.
+This public version of the lisp compiler is routinely exercised on
+Linux and Cygwin, it has been briefly tested on FreeBSD and SunOS, and
+should be easily portable to any Posix system.  The interpreter part
+has additionally been ported to several embedded operating systems.
+Support, alternative licenses, and ports can be discussed with
+Oliotalo Ltd.  The ports have support for various protocols and
+devices specific for that platform.
 
 For further information or to download, see
 http://hedgehog.oliotalo.fi/ or mail hedgehog@hedgehog.oliotalo.fi.
@@ -44,34 +47,37 @@ Authors: Kenneth Oksanen <cessu@iki.fi>
 	Version-specific Note
 	=====================
 
-This series of versions, hedgehog-2.0-pre*, has been extracted and cleaned up
-from a significantly more featureful hedgehog-1.6, which is used by
+This series of versions, hedgehog-2.*, has been extracted and cleaned
+up from a significantly more featureful hedgehog-1.6, which is used by
 Oliotalo in several embedded machine-to-machine solutions.  While many
 parts of the code are mature and well-tested, this version undoubtedly
 contains also immature and incorrect pieces of code.  Also some parts
-are missing, such as a few good demo applications and a state machine
-library (which hedgehog-1.6 has but we wish to improve for 2.0).
-Therefore we consider this as an alpha-quality pre-release.
-
-Our estimate is that a few additional pre-releases will be made with a
-few week's interval before the eventual final Hedgehog-2.0 release.
+are missing, such as a few good demo applications and various features
+planned for the state machine library (which hedgehog-1.6 has but we
+wish to improve for 2.0).  Therefore we consider this as an
+beta-quality at best.  But we will gradually improve.
 
 
 	Running HedgeHog
 	================
 
-To compile and install Hedgehog, unpack the sources and change to the
-source directory and then do the following:
+To compile and install Hedgehog on a typical Linux installation,
+unpack the sources and change to the source directory and then do the
+following:
     	mkdir o
 	cd o
 	../configure linux /usr/local
 	make
-This builds to executables the lisp compiler `hhc' and the byte code
-interpreter `hhi', and some lisp library files in the directory
-`prelude.d'.
+where `make' refers to GNU make.  This builds to executables the lisp
+compiler `hhc' and the byte code interpreter `hhi', and some lisp
+library files in the directory `prelude.d'.  Hedgehog has been
+compiled and tested on a number of other platforms, including FreeBSD
+and SunOS, but you will need GNU make and in many cases, especially if
+you wish to edit the develop the code further, also the GNU awk and
+lex replacements gawk and flex.
 
-You should now be able to compile tests in the `tests'-directory, for
-example by issuing
+Assuming the above completed successfully, you should now be able to
+compile tests in the `tests'-directory, for example by issuing
 	./hhc -g -p prelude.d ../tests/fib.hl
 in order to compile the ubiquitous Fibonacci-test.  This produces two
 output files, `fib.hlo' and `fib.hls'.  The latter is a symbolic
@@ -122,6 +128,9 @@ XXX Here comes a little tour of the prelude.
 	======================
 
 XXX Design and write a guide.
+
+The macros HH_UNIX, HH_SUNOS, HH_BSD, HH_LINUX etc. refer to the
+target platform where we run hhi, but not necessarily to hhc.
 
 But while nothing is written yet, a few words of advice:
   - In general, the code is supposed to be touched.

@@ -425,7 +425,7 @@ define MS_FSS
 define MS_DATA
 define MS_NOTRUNC
 define MS_OVERLAY
-define MS_OPTIONSTR
+# NOT this one, as the insn always passes NULL: define MS_OPTIONSTR
 define MS_GLOBAL
 define MS_FORCE
 define MS_NOMNTTAB
@@ -433,6 +433,57 @@ define MS_SYSSPACE
 define MS_NOSPLICE
 define MS_NOCHECK
 
+# Some mount flags from FreeBSD.  Many of these are probably not relevant.
+include <sys/param.h>
+
+define MNT_RDONLY
+define MNT_SYNCHRONOUS
+define MNT_NOEXEC
+define MNT_NOSUID
+define MNT_NODEV
+define MNT_UNION
+define MNT_ASYNC
+define MNT_SUIDDIR
+define MNT_SOFTDEP
+define MNT_NOSYMFOLLOW
+define MNT_JAILDEVFS
+define MNT_MULTILABEL
+define MNT_ACLS
+define MNT_NOATIME
+define MNT_NOCLUSTERR
+define MNT_NOCLUSTERW
+define MNT_EXRDONLY
+define MNT_EXPORTED
+define MNT_DEFEXPORTED
+define MNT_EXPORTANON
+define MNT_EXKERB
+define MNT_EXPUBLIC
+define MNT_LOCAL
+define MNT_QUOTA
+define MNT_ROOTFS
+define MNT_USER
+define MNT_IGNORE
+define MNT_VISFLAGMASK
+define MNT_UPDATE
+define MNT_DELEXPORT
+define MNT_RELOAD
+define MNT_FORCE
+define MNT_SNAPSHOT
+define MNT_BYFSID
+define MNT_CMDFLAGS
+define MNTK_UNMOUNTF
+define MNTK_UNMOUNT
+define MNTK_MWAIT
+define MNTK_WANTRDWR
+define MNTK_SUSPEND
+define MNTK_SUSPENDED
+define VFS_VFSCONF
+define VFS_GENERIC
+define VFS_MAXTYPENUM
+define VFS_CONF
+define MNT_WAIT
+define MNT_NOWAIT
+define MNT_LAZY
 
 ## Termios
 

@@ -10,7 +10,7 @@
 #include "hh_common.h"
 #include "hh_ast.h"
 #include "hh_macroexpand.h"
-#include <malloc.h>
+#include <stdlib.h>
 
 
 #define MAX_N_MACRO_VARS  16

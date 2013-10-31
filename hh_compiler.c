@@ -1,5 +1,5 @@
 /* This file is part of Hedgehog LISP.
- * Copyright (C) 2003, 2004 Oliotalo Ltd.
+ * Copyright (C) 2003, 2004, 2005 Oliotalo Ltd.
  * See file LICENSE.LGPL for pertinent licensing conditions.
  *
  * Authors: Kenneth Oksanen <cessu@iki.fi>
@@ -26,7 +26,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <dirent.h>
+#ifndef sun
 #include <getopt.h>
+#endif
 
 
 #ifndef DEFAULT_PRELUDE
@@ -179,6 +181,7 @@ static void find_prelude_files(const char *dirname)
 }
 
 
+#ifndef sun
 static struct option hh_longopts[] = {
   { "prelude", required_argument, NULL, 'p' },
   { "verbose", optional_argument, NULL, 'v' },
@@ -188,6 +191,7 @@ static struct option hh_longopts[] = {
   { "help", no_argument, NULL, 'h' },
   { NULL, 0, NULL, 0 }
 };
+#endif
 
 
 int main(int argc, char **argv)
@@ -201,8 +205,13 @@ int main(int argc, char **argv)
 
   hh_n_preludes = 0;
 
+#ifdef sun
+  /* We can't assume getopt_long here. */
+  while ((c = getopt(argc, argv, "D:p:o:v:hxXg")) != -1)
+#else
   while ((c = getopt_long(argc, argv, "D:p:o:v:hxXg", hh_longopts, &optind))
 	 != -1)
+#endif
     switch (c) {
     case 'p':
       HH_ASSERT(optarg != NULL);
@@ -262,8 +271,16 @@ int main(int argc, char **argv)
     hh_n_preludes = 0;
   
 #ifdef HH_LINUX
-  hh_directive_define("HH_UNIX");
   hh_directive_define("HH_LINUX");
+#endif
+#ifdef HH_SUNOS
+  hh_directive_define("HH_SUNOS");
+#endif
+#ifdef HH_BSD
+  hh_directive_define("HH_BSD");
+#endif
+#ifdef HH_UNIX
+  hh_directive_define("HH_UNIX");
 #endif
 
   hh_ast_init();

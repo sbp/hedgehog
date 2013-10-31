@@ -1,7 +1,7 @@
 # This file has NOT been created by autoconf.  ;-)
 #
 # This file is part of Hedgehog LISP.
-# Copyright (C) 2003, 2004 Oliotalo Ltd.
+# Copyright (C) 2003, 2004, 2005 Oliotalo Ltd.
 # See file LICENSE.LGPL for pertinent licensing conditions.
 #
 # Authors: Lars Wirzenius <liw@iki.fi>
@@ -42,6 +42,14 @@ case "`uname -s`" in
     CYGWIN*)
     	hosttype=cygwin
 	;;
+
+    FreeBSD|OpenBSD|Darwin)
+        hosttype=BSD
+        ;;
+
+    SunOS)
+        hosttype=SunOS
+        ;;
 esac
 
 
@@ -57,7 +65,7 @@ case "$hosttype,$1" in
 	LD2=:
 	L2FLAGS=''
 
-	XCC=gcc
+	XCC='$(CC)'
 	XCFLAGS='-Wall -O -g -I. -I$(srcdir) -DHH_LINUX -DHH_TESTING'
 	XLD='$(CC)'
 	XLDOUTPUT='-o $@'
@@ -177,6 +185,60 @@ case "$hosttype,$1" in
 	platform="hh_interp_unix.o"
 	boot=""
 	targets="hh_seed.h hhc hhi"
+	suffix=''
+	;;
+
+    SunOS,SunOS)
+	CC=gcc
+	CFLAGS='-O -g -I. -I$(srcdir) -DHH_SUNOS'
+	LD='$(CC)'
+	LDOUTPUT='-o $@'
+	LFLAGS=''
+	LIBS=''
+	LD2=:
+	L2FLAGS=''
+
+	XCC='$(CC)'
+	XCFLAGS='-O -g -I. -I$(srcdir) -DHH_SUNOS -DHH_TESTING'
+	XLD='$(CC)'
+	XLDOUTPUT='-o $@'
+	XLFLAGS=''
+	XLIBS='-lsocket -lnsl'
+	XLD2=:
+	XL2FLAGS=''
+	XEXEC='./'
+
+	AWK=gawk
+	platform="hh_interp_unix.o"
+	boot=""
+	targets="hh_seed.h hhc hhi 300-unix.hl"
+	suffix=''
+	;;
+
+    BSD,BSD)
+	CC=gcc
+	CFLAGS='-O -g -I. -I$(srcdir) -DHH_BSD'
+	LD='$(CC)'
+	LDOUTPUT='-o $@'
+	LFLAGS=''
+	LIBS=''
+	LD2=:
+	L2FLAGS=''
+
+	XCC='$(CC)'
+	XCFLAGS='-O -g -I. -I$(srcdir) -DHH_BSD -DHH_TESTING'
+	XLD='$(CC)'
+	XLDOUTPUT='-o $@'
+	XLFLAGS=''
+	XLIBS=''
+	XLD2=:
+	XL2FLAGS=''
+	XEXEC='./'
+
+	AWK=gawk
+	platform="hh_interp_unix.o"
+	boot=""
+	targets="hh_seed.h hhc hhi 300-unix.hl"
 	suffix=''
 	;;
 

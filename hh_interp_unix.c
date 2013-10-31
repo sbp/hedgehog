@@ -9,15 +9,12 @@
 /* This file implements the main program for the byte code interpreter
    for UNIX-like operating systems: command line argument parsing etc. */
 
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
 #include "hh_common.h"
 #include "hh_interp.h"
 #include "hh_data.h"
 #include "hh_printf.h"
+
+#include <stdio.h>
 
 
 #ifdef HH_USE_BOOT
@@ -29,8 +26,7 @@
 #endif
 
 
-/*
- * How many steps should we perform before polling the system for things?
+/* How many steps should we perform before polling system events?
  */
 #define STEPS 1000
 
@@ -265,6 +261,8 @@ Number of immediate insns = %d of 64.\n",
 }
 
 
+#ifndef HH_SUNOS
+
 #include <getopt.h>
 
 static struct option hh_options[] = {
@@ -284,6 +282,8 @@ static struct option hh_options[] = {
   { NULL, 0, NULL, 0 }
 };
 
+#endif
+
 
 int main(int argc, char **argv)
 {
@@ -295,8 +295,12 @@ int main(int argc, char **argv)
   long i, stack_n_words;
   char *endptr;
 
+#ifdef HH_SUNOS
+  while ((c = getopt(argc, argv, "hVH:S:bgips:c:vn:")) != -1)
+#else
   while ((c = getopt_long(argc, argv, "hVH:S:bgips:c:vn:", hh_options, &optind))
 	 != -1)
+#endif
     switch (c) {
     case 'h':
       hh_usage(argv[0]);

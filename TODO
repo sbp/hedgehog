@@ -3,6 +3,12 @@
 # Author: Kenneth Oksanen <cessu@iki.fi>
 #
 
+We have ported Hedgehog to Solaris (SunOS) and FreeBSD in the sense
+that they compile and we have ran some rudimentary tests on them.
+However, we have not ran any deeper tests, such as actually checking
+that various system-dependent builtins work.  User contributions and
+bug/success reports are welcome.
+
 Improve documentation.
 
 A web server demo.

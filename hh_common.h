@@ -39,21 +39,52 @@ typedef signed long hh_signed_word_t;
 #endif
 
 
-#ifdef unix
+#ifdef HH_LINUX
+#define HH_UNIX  1
+#endif
+
+#ifdef HH_SUNOS
+#define HH_UNIX  1
+#endif
+
+#ifdef HH_BSD
+#define HH_UNIX  1
+#endif
+
+
 /* Collected include liturgy here. */
-#include <sys/types.h>
-#include <unistd.h>
+
+#include <stdlib.h>
 #include <errno.h>
 #include <dirent.h>
 #include <sys/select.h>
-#include <sys/stat.h>
+
+#ifndef HH_COMPILER
+
+/* Some possibly system-dependent includes for the interpreter. */
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/time.h>
+
+#ifdef HH_UNIX
+#include <sys/stat.h>
+#ifdef HH_BSD
+#include <sys/param.h>
+#endif
 #include <sys/mount.h>
+#ifdef HH_SUNOS
+#include <sys/mntent.h>
+#include <stropts.h>
+#else
+#include <sys/ioctl.h>
+#endif
 #include <sys/socket.h>
 #include <termios.h>
 #include <time.h>
-#include <fcntl.h>
 #include <netinet/in.h>
+#endif
+
 #endif
 
 
@@ -138,11 +169,6 @@ int hh_lisp_print_interpreter(struct hh_context_t *ctx, /* In hh_interp_*.c */
 #endif
 
 
-#ifdef HH_LINUX
-#define HH_UNIX  1
-#endif
-
-
 #if __GNUC__ >= 3
 /* Macros that make it possible to give the compiler hints on which
    branch is most likely taken. */
@@ -194,7 +220,7 @@ int hh_lisp_print_interpreter(struct hh_context_t *ctx, /* In hh_interp_*.c */
 
 #define HEDGEHOG_IMPLEMENTATION_VERSION_MAJOR  HEDGEHOG_LISP_VERSION_MAJOR
 #define HEDGEHOG_IMPLEMENTATION_VERSION_MINOR  HEDGEHOG_LISP_VERSION_MINOR
-#define HEDGEHOG_IMPLEMENTATION_VERSION_PATCH  0
+#define HEDGEHOG_IMPLEMENTATION_VERSION_PATCH  1
 
 
 #endif /* HH_INCL_COMMON */

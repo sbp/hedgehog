@@ -17,14 +17,43 @@
 /* Macros for unaligned MSB first memory reads.  `p' is assumed to be
    a valid pointer value of type `unsigned char *'. */
 
-#define HH_GET_UINT32(p)  					\
-  (((p)[0] << 24) | ((p)[1] << 16) | ((p)[2] << 8) | (p)[3])
+#define HH_GET_UINT32(p)			\
+  (((hh_word_t) (p)[0] << 24)			\
+   | ((hh_word_t) (p)[1] << 16) 		\
+   | ((hh_word_t) (p)[2] << 8) 			\
+   | (p)[3])
 
 #define HH_GET_UINT24(p)			\
-  (((p)[0] << 16) | ((p)[1] << 8) | (p)[2])
+  (((hh_word_t) (p)[0] << 16)			\
+   | ((hh_word_t) (p)[1] << 8)			\
+   | (p)[2])
 
 #define HH_GET_UINT16(p)  			\
-  (((p)[0] << 8) | (p)[1])
+  (((hh_word_t) (p)[0] << 8) | (p)[1])
+
+
+/* Converses for writing. */
+
+#define HH_PUT_UINT32(p, w)			\
+  do {						\
+    (p)[0] = (w) >> 24;				\
+    (p)[1] = (w) >> 16;				\
+    (p)[2] = (w) >> 8;				\
+    (p)[3] = (w);				\
+  } while (0)
+
+#define HH_PUT_UINT24(p, w)			\
+  do {						\
+    (p)[0] = (w) >> 16;				\
+    (p)[1] = (w) >> 8;				\
+    (p)[2] = (w);				\
+  } while (0)
+
+#define HH_PUT_UINT16(p, w)			\
+  do {						\
+    (p)[0] = (w) >> 8;				\
+    (p)[1] = (w);				\
+  } while (0)
 
 
 /* Internal state of a single HedgeHog interpreter execution.

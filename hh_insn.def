@@ -272,7 +272,6 @@ INSN(strsplit_last,
        p = HH_WORD_TO_PTR(ctx, w);
        HH_CHECK(w, HH_IS_STRING(p), HH_ERROR_EXPECT_STRING);
 
-       sp--;
        {
          const char *target = HH_STRING_PTR(p);
          const char *pattern = HH_STRING_PTR(accu_as_ptr);
@@ -296,6 +295,7 @@ INSN(strsplit_last,
            }
          accu = w;
        }
+       sp--;
        goto reserve_for_next;
      })
 
@@ -1596,6 +1596,57 @@ EXT_INSN(unix_fcntl,
       sp -= 2;
     })
 
+#if 0
+/* This is a user contribution, but because it is not quite correct,
+   lacks support in prelude.d/unix-interface, and is rather
+   non-lispish, it isn't taken out of #if 0 .. #endif's yet.  But
+   it'll be included in some release rather soon. // Cessu */
+EXT_INSN(unix_ioctl,
+    0,
+    {
+      HH_CHECK(sp[-2], HH_WORD_IS_SHORT(sp[-2]), HH_ERROR_EXPECT_SHORT);
+      HH_CHECK(sp[-1], HH_WORD_IS_SHORT(sp[-1]), HH_ERROR_EXPECT_SHORT);
+      if (HH_WORD_IS_INT(accu)) {
+	int arg;
+	int sw;
+	
+	arg = HH_WORD_TO_SHORT(accu);
+	sw = HH_SHORT_TO_WORD(ioctl(HH_WORD_TO_SHORT(sp[-2]),
+				    HH_WORD_TO_SHORT(sp[-1]),
+				    arg));
+	
+	sp -= 2;
+	HH_CONS(ctx, accu_as_ptr, accu,
+		HH_SHORT_TO_WORD(sw),
+		HH_SHORT_TO_WORD(arg));
+      } else {
+	unsigned char buf[1024];
+	int slen;
+	int sw;
+	
+	HH_CHECK(accu, HH_WORD_IS_PTR(accu), HH_ERROR_EXPECT_STRING);
+	HH_CHECK(accu, HH_IS_STRING(accu_as_ptr), HH_ERROR_EXPECT_STRING);
+	slen = HH_STRING_LEN(accu_as_ptr);
+	/* XXX bad error message... and should this really
+	   allocate the buffer with malloc() if the string is longer
+	   than 1024 bytes... */
+	HH_CHECK(accu, slen <= sizeof buf, HH_ERROR_EXPECT_STRING);
+	
+	memcpy(buf, HH_STRING_PTR(accu_as_ptr), slen);
+	
+	sw = HH_SHORT_TO_WORD(ioctl(HH_WORD_TO_SHORT(sp[-2]),
+				    HH_WORD_TO_SHORT(sp[-1]),
+				    buf));
+	
+	sp -= 2;
+	HH_CONS(ctx, accu_as_ptr, accu,
+		HH_SHORT_TO_WORD(sw),
+		hh_box_string(ctx, buf, slen));
+      }
+      goto reserve_for_next;
+    })
+#endif
+
 
 EXT_INSN(unix_connect,
     0,
@@ -1776,6 +1827,8 @@ EXT_INSN(unix_lseek,
       sp -= 2;
     })
 
+#ifdef HH_LINUX
+
 EXT_INSN(unix_mount,
     0,
     {
@@ -1811,6 +1864,97 @@ EXT_INSN(unix_mount,
       sp -= 4;
     })
 
+#endif
+
+#ifdef HH_BSD
+
+/* FreeBSD mount has argument order 
+	mount(const char *type, const char *dir, int flags, void *data)
+   where dir corresponds to Linux's target and data to source.  
+   I presume that other BSD variants have the same argument order??? */
+
+EXT_INSN(unix_mount,
+    0,
+    {
+      if (accu != HH_NIL) {
+	HH_CHECK(accu, HH_WORD_IS_PTR(accu), HH_ERROR_EXPECT_STRING);
+	HH_CHECK(accu, HH_IS_STRING(accu_as_ptr), HH_ERROR_EXPECT_STRING);
+      }
+
+      HH_CHECK(sp[-1], HH_WORD_IS_INT(sp[-1]), HH_ERROR_EXPECT_INT);
+
+      HH_CHECK(sp[-2], HH_WORD_IS_PTR(sp[-2]), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(sp[-2], HH_IS_STRING(HH_WORD_TO_PTR(ctx, sp[-2])),
+	       HH_ERROR_EXPECT_STRING);
+
+      HH_CHECK(sp[-3], HH_WORD_IS_PTR(sp[-3]), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(sp[-3], HH_IS_STRING(HH_WORD_TO_PTR(ctx, sp[-3])),
+	       HH_ERROR_EXPECT_STRING);
+
+      HH_CHECK(sp[-4], HH_WORD_IS_PTR(sp[-4]), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(sp[-4], HH_IS_STRING(HH_WORD_TO_PTR(ctx, sp[-4])),
+	       HH_ERROR_EXPECT_STRING);
+
+      if (mount(HH_STRING_PTR(HH_WORD_TO_PTR(ctx, sp[-2])),
+		HH_STRING_PTR(HH_WORD_TO_PTR(ctx, sp[-3])),
+		HH_WORD_TO_UNSIGNED(ctx, sp[-1]),
+		HH_STRING_PTR(HH_WORD_TO_PTR(ctx, sp[-4]))) == 0)
+	/* Mount succeeded. */
+	accu = HH_TRUE;
+      else
+	/* Mount failed. */
+	accu = HH_FALSE;
+      sp -= 4;
+    })
+
+#endif
+
+#ifdef HH_SUNOS
+
+/* Solaris' mount has fstype and flags in different order and adds
+   optptr and optlen.  Hide the different argument order and pass
+   NULL/0 as optptr and optlen. */
+
+EXT_INSN(unix_mount,
+    0,
+    {
+      if (accu != HH_NIL) {
+	HH_CHECK(accu, HH_WORD_IS_PTR(accu), HH_ERROR_EXPECT_STRING);
+	HH_CHECK(accu, HH_IS_STRING(accu_as_ptr), HH_ERROR_EXPECT_STRING);
+      }
+
+      HH_CHECK(sp[-1], HH_WORD_IS_INT(sp[-1]), HH_ERROR_EXPECT_INT);
+
+      HH_CHECK(sp[-2], HH_WORD_IS_PTR(sp[-2]), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(sp[-2], HH_IS_STRING(HH_WORD_TO_PTR(ctx, sp[-2])),
+	       HH_ERROR_EXPECT_STRING);
+
+      HH_CHECK(sp[-3], HH_WORD_IS_PTR(sp[-3]), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(sp[-3], HH_IS_STRING(HH_WORD_TO_PTR(ctx, sp[-3])),
+	       HH_ERROR_EXPECT_STRING);
+
+      HH_CHECK(sp[-4], HH_WORD_IS_PTR(sp[-4]), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(sp[-4], HH_IS_STRING(HH_WORD_TO_PTR(ctx, sp[-4])),
+	       HH_ERROR_EXPECT_STRING);
+
+      if (mount(HH_STRING_PTR(HH_WORD_TO_PTR(ctx, sp[-4])),
+		HH_STRING_PTR(HH_WORD_TO_PTR(ctx, sp[-3])),
+		HH_WORD_TO_UNSIGNED(ctx, sp[-1]),
+		HH_STRING_PTR(HH_WORD_TO_PTR(ctx, sp[-2])),
+		accu == HH_NIL ? NULL : HH_STRING_PTR(accu_as_ptr),
+		NULL, 0) == 0)
+	/* Mount succeeded. */
+	accu = HH_TRUE;
+      else
+	/* Mount failed. */
+	accu = HH_FALSE;
+      sp -= 4;
+    })
+
+#endif
+
+#if defined(HH_LINUX) || defined(HH_SUNOS)
+
 EXT_INSN(unix_umount,
     0,
     {
@@ -1822,6 +1966,24 @@ EXT_INSN(unix_umount,
       else
 	accu = HH_FALSE;
     })
+
+#endif
+
+#ifdef HH_BSD
+
+EXT_INSN(unix_umount,
+    0,
+    {
+      HH_CHECK(accu, HH_WORD_IS_PTR(accu), HH_ERROR_EXPECT_STRING);
+      HH_CHECK(accu, HH_IS_STRING(accu_as_ptr), HH_ERROR_EXPECT_STRING);
+
+      if (unmount(HH_STRING_PTR(accu_as_ptr), 0) == 0)
+	accu = HH_TRUE;
+      else
+	accu = HH_FALSE;
+    })
+
+#endif
 
 EXT_INSN(unix_usleep,
     0,
@@ -1911,6 +2073,8 @@ EXT_INSN(unix_tcflow,
       sp--;
     })
 
+#ifndef HH_SUNOS
+
 EXT_INSN(unix_cfmakeraw,
     0,
     {
@@ -1927,6 +2091,8 @@ EXT_INSN(unix_cfmakeraw,
       cfmakeraw((struct termios *) HH_STRING_PTR(accu_as_ptr));
       goto reserve_for_next;
     })
+
+#endif
 
 EXT_INSN(unix_cfgetispeed,
     0,
@@ -1973,6 +2139,7 @@ EXT_INSN(unix_cfsetispeed,
 	       HH_ERROR_EXPECT_STRING);
       HH_CHECK(accu, HH_WORD_IS_SHORT(accu), HH_ERROR_EXPECT_SHORT);
       HH_RESERVE(HH_STRING_N_WORDS(sizeof(struct termios)));
+      sp--;
       accu = hh_box_string(ctx,
 			   HH_STRING_PTR(p),
 			   HH_STRING_LEN(p));
@@ -1994,6 +2161,7 @@ EXT_INSN(unix_cfsetospeed,
 	       HH_ERROR_EXPECT_STRING);
       HH_CHECK(accu, HH_WORD_IS_SHORT(accu), HH_ERROR_EXPECT_SHORT);
       HH_RESERVE(HH_STRING_N_WORDS(sizeof(struct termios)));
+      sp--;
       accu = hh_box_string(ctx,
 			   HH_STRING_PTR(p),
 			   HH_STRING_LEN(p));

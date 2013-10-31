@@ -1,5 +1,5 @@
 /* A byte code interpreter for Hedgehog LISP.
- * Copyright (C) 2003, 2004 Oliotalo Ltd.
+ * Copyright (C) 2003, 2004, 2005 Oliotalo Ltd.
  * See file LICENSE.LGPL for pertinent licensing conditions.
  *
  * Authors: Lars Wirzenius <liw@iki.fi>
@@ -10,13 +10,10 @@
    documentation of builtins in `hh_builtins.def' and produces an SGML
    document of them. */
 
+#include "hh_common.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-
-#ifdef HH_LINUX
-#define HH_UNIX  1
-#endif
 
 #define EMPTY_CELL "any"
 #define STRING_CELL "string"
